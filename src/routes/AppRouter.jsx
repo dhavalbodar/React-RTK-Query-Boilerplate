@@ -1,66 +1,68 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import AuthLayout from '../layouts/AuthLayout'
-import { adminRoutes, publicRoutes, userRoutes } from './routeConfig'
-import Unauthorized from '../pages/Unauthorized'
-import NotFound from '../pages/NotFound'
-import ProtectedRoute from './ProtectedRoute'
-import UserLayout from '../layouts/UserLayout'
-import AdminLayout from '../layouts/AdminLayout'
-import PublicRoute from './PublicRoute'
 import usePreviousPath from '../hooks/usePreviousPath'
-import Home from '../pages/Home'
+
+// lazily load every component used in routes
+const AuthLayout = React.lazy(() => import('../layouts/AuthLayout'))
+const UserLayout = React.lazy(() => import('../layouts/UserLayout'))
+const AdminLayout = React.lazy(() => import('../layouts/AdminLayout'))
+const Unauthorized = React.lazy(() => import('../pages/Unauthorized'))
+const NotFound = React.lazy(() => import('../pages/NotFound'))
+const Home = React.lazy(() => import('../pages/Home'))
+const ProtectedRoute = React.lazy(() => import('./ProtectedRoute'))
+const PublicRoute = React.lazy(() => import('./PublicRoute'))
+
+import { adminRoutes, publicRoutes, userRoutes } from './routeConfig'
 
 const AppRouter = () => {
   usePreviousPath();
   return (
-    <Routes>
-      {/* Define your routes here */}
+    <Suspense fallback={<div>Loading...</div>}>
+      <Routes>
+        <Route path="/" element={<Home />} />
 
-      <Route path="/" element={<Home />} />
+        <Route
+          element={
+            <PublicRoute>
+              <AuthLayout />
+            </PublicRoute>
+          }
+        >
+          {publicRoutes.map(({ path, element }) => (
+            <Route key={path} path={path} element={React.createElement(element)} />
+          ))}
+        </Route>
 
-      <Route element={
-        <PublicRoute>
-          <AuthLayout />
-        </PublicRoute>
-      }>
-        {publicRoutes.map(({ path, element }) => (
-          <Route key={path} path={path} element={React.createElement(element)} />
-        ))}
-      </Route>
+        <Route
+          path="/user"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <UserLayout />
+            </ProtectedRoute>
+          }
+        >
+          {userRoutes.map(({ path, element }) => (
+            <Route key={path} path={path} element={React.createElement(element)} />
+          ))}
+        </Route>
 
-      {/* public routes */}
-      <Route
-        path="/user"
-        element={
-          <ProtectedRoute allowedRoles={["user"]}>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        {userRoutes.map(({ path, element }) => (
-          <Route key={path} path={path} element={React.createElement(element)} />
-        ))}
-      </Route>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          {adminRoutes.map(({ path, element }) => (
+            <Route key={path} path={path} element={React.createElement(element)} />
+          ))}
+        </Route>
 
-      {/* admin routes */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        {adminRoutes.map(({ path, element }) => (
-          <Route key={path} path={path} element={React.createElement(element)} />
-        ))}
-      </Route>
-
-      <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="*" element={<NotFound />} />
-
-    </Routes>
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   )
 }
 
